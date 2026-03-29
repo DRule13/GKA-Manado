@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GKA Manado System v7.1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        .bg-ka-gradient { background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%); }
+        .card { background: white; border-radius: 2rem; border: 1px solid #e2e8f0; }
+        .input-focus { outline: none; border: 1px solid #e2e8f0; transition: all 0.2s; }
+        .input-focus:focus { border-color: #4f46e5; ring: 2px; ring-color: #4f46e5; }
+    </style>
+</head>
+<body>
+
+    <div id="loginOverlay" class="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-4">
+        <div class="bg-white p-10 rounded-[3rem] shadow-2xl max-w-sm w-full text-center">
+            <h2 class="text-2xl font-black text-indigo-900 mb-6 uppercase tracking-tighter">GKA Manado</h2>
+            <input type="password" id="pinInput" placeholder="PIN" class="w-full p-4 bg-slate-100 rounded-2xl mb-4 text-center tracking-[1em] text-xl outline-none focus:ring-2 focus:ring-indigo-500">
+            <button onclick="checkPin()" class="w-full bg-indigo-900 text-white py-4 rounded-2xl font-bold uppercase tracking-widest">Login</button>
+        </div>
+    </div>
+
+    <div id="mainApp" class="hidden">
+        <nav class="bg-ka-gradient text-white p-5 sticky top-0 z-50 shadow-xl no-print">
+            <div class="container mx-auto flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center font-black">GKA</div>
+                    <h1 class="font-extrabold text-sm uppercase tracking-widest">Database Kehadiran <span class="opacity-50 font-normal">v7.1</span></h1>
+                </div>
+                <button onclick="logout()" class="text-[10px] font-bold uppercase bg-rose-500 px-4 py-2 rounded-xl">Logout</button>
+            </div>
+        </nav>
+
+        <div class="container mx-auto p-4 md:p-8">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="card p-8 shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-center mb-4">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mode Input</label>
+                            <select id="inputMode" onchange="toggleInputMode()" class="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg outline-none">
+                                <option value="single">Single (Detail + Telp)</option>
+                                <option value="bulk">Bulk (Daftar Nama Saja)</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-3 mb-4">
+                            <input type="date" id="inputDate" class="p-4 bg-slate-50 rounded-2xl outline-none border text-sm font-bold">
+                            <select id="kat" class="p-4 bg-slate-50 rounded-2xl outline-none border text-sm font-bold">
+                                <optgroup label="Ibadah Umum">
+                                    <option value="Jemaat Umum">Jemaat Umum</option>
+                                    <option value="Pelayan Umum">Pelayan Umum</option>
+                                    <option value="Jibar Umum">Jiwa Baru Umum ✨</option>
+                                </optgroup>
+                                <optgroup label="Youth Teens">
+                                    <option value="Jemaat Youth">Jemaat Youth</option>
+                                    <option value="Pelayan Youth">Pelayan Youth</option>
+                                    <option value="Jibar Youth">Jiwa Baru Youth ✨</option>
+                                </optgroup>
+                                <optgroup label="Kids">
+                                    <option value="Jemaat Kids">Jemaat Kids</option>
+                                    <option value="Pelayan Kids">Pelayan Kids</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div id="singleInput" class="space-y-3">
+                            <input type="text" id="inp_nama" placeholder="Nama Lengkap" class="w-full p-4 bg-slate-50 rounded-2xl text-sm border outline-none">
+                            <input type="text" id="inp_telp" placeholder="WhatsApp (Opsional)" class="w-full p-4 bg-slate-50 rounded-2xl text-sm border outline-none">
+                            <input type="text" id="inp_alamat" placeholder="Alamat (Opsional)" class="w-full p-4 bg-slate-50 rounded-2xl text-sm border outline-none">
+                        </div>
+
+                        <div id="bulkInput" class="hidden space-y-3">
+                            <textarea id="names" rows="5" placeholder="Ketik banyak nama (pisah baris)..." class="w-full p-4 bg-slate-50 rounded-2xl text-sm outline-none border focus:border-indigo-500"></textarea>
+                        </div>
+
+                        <button onclick="saveData()" class="w-full mt-6 bg-indigo-900 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-indigo-950 transition-all uppercase text-xs tracking-widest">Simpan Data</button>
+                    </div>
+
+                    <div class="card p-6 h-60 flex items-center justify-center">
+                        <canvas id="chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="card p-6">
+                        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                            <div class="flex gap-2 w-full md:w-auto">
+                                <input type="date" id="filterDate" onchange="loadJemaat()" class="p-3 bg-slate-100 rounded-xl text-xs font-bold outline-none">
+                                <input type="text" id="searchInput" onkeyup="loadJemaat()" placeholder="Cari..." class="flex-1 p-3 bg-slate-100 rounded-xl text-xs font-bold outline-none">
+                            </div>
+                            <button onclick="shareLaporanManado()" class="w-full md:w-auto bg-emerald-600 text-white font-black py-3 px-6 rounded-2xl shadow-lg flex items-center justify-center gap-2 uppercase text-[10px]">
+                                📲 Share Laporan WA
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" id="statPanel"></div>
+                        
+                        <div class="max-h-[500px] overflow-y-auto rounded-xl border border-slate-100">
+                            <table class="w-full text-left">
+                                <tbody id="list" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let db = JSON.parse(localStorage.getItem('GKA_DB_V7.1')) || [];
+        let savedPin = localStorage.getItem('DB_PIN') || "1234";
+        let chart;
+
+        document.getElementById('inputDate').valueAsDate = new Date();
+        document.getElementById('filterDate').valueAsDate = new Date();
+
+        function checkPin() {
+            if(document.getElementById('pinInput').value === savedPin) {
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('mainApp').classList.remove('hidden');
+                loadJemaat();
+            } else { alert("PIN Salah!"); }
+        }
+
+        function toggleInputMode() {
+            const mode = document.getElementById('inputMode').value;
+            document.getElementById('singleInput').classList.toggle('hidden', mode !== 'single');
+            document.getElementById('bulkInput').classList.toggle('hidden', mode !== 'bulk');
+        }
+
+        function formatWA(num) {
+            if(!num || num === '-' || num.trim() === '') return '-';
+            let clean = num.replace(/[^0-9]/g, '');
+            if(clean.startsWith('0')) clean = '62' + clean.slice(1);
+            if(clean.startsWith('8')) clean = '62' + clean;
+            return clean;
+        }
+
+        function saveData() {
+            const mode = document.getElementById('inputMode').value;
+            const kat = document.getElementById('kat').value;
+            const tgl = document.getElementById('inputDate').value;
+            
+            if(mode === 'single') {
+                const n = document.getElementById('inp_nama').value.trim();
+                if(!n) return alert("Nama harus diisi!");
+                db.push({
+                    id: Date.now(), n, k: kat, d: tgl,
+                    telp: formatWA(document.getElementById('inp_telp').value),
+                    alamat: document.getElementById('inp_alamat').value || '-'
+                });
+            } else {
+                const names = document.getElementById('names').value.trim();
+                if(!names) return alert("Isi daftar nama!");
+                names.split('\n').filter(x => x.trim()).forEach(n => {
+                    db.push({ id: Date.now() + Math.random(), n: n.trim(), k: kat, d: tgl, telp: '-', alamat: '-' });
+                });
+            }
+
+            localStorage.setItem('GKA_DB_V7.1', JSON.stringify(db));
+            ["names","inp_nama","inp_telp","inp_alamat"].forEach(id => document.getElementById(id).value = "");
+            loadJemaat();
+            alert("Data Disimpan!");
+        }
+
+        function loadJemaat() {
+            const fD = document.getElementById('filterDate').value;
+            const fS = document.getElementById('searchInput').value.toLowerCase();
+            const body = document.getElementById('list');
+            const c = { u:0, y:0, k:0 };
+            body.innerHTML = "";
+
+            db.slice().reverse().filter(x => {
+                const mD = !fD || x.d === fD;
+                const mS = x.n.toLowerCase().includes(fS) || x.alamat.toLowerCase().includes(fS);
+                return mD && mS;
+            }).forEach(x => {
+                if(x.k.includes('Umum')) c.u++;
+                if(x.k.includes('Youth')) c.y++;
+                if(x.k.includes('Kids')) c.k++;
+
+                let waLink = (x.telp !== '-') ? `<a href="https://wa.me/${x.telp}" target="_blank" class="text-emerald-500 font-bold ml-2">📱</a>` : "";
+
+                body.innerHTML += `
+                    <tr class="text-xs border-b hover:bg-slate-50 transition-colors">
+                        <td class="p-4">
+                            <div class="font-black text-slate-800 uppercase">${x.n} ${waLink}</div>
+                            <div class="text-[9px] text-slate-400 font-bold">${x.telp} | ${x.alamat}</div>
+                        </td>
+                        <td class="p-4"><span class="px-2 py-1 rounded bg-slate-100 text-[8px] font-black uppercase text-slate-500">${x.k}</span></td>
+                        <td class="p-4 text-right"><button onclick="hapus('${x.id}')" class="text-rose-200 hover:text-rose-500">✕</button></td>
+                    </tr>`;
+            });
+            updateStats(c);
+            updateChart(c);
+        }
+
+        function updateStats(c) {
+            const p = document.getElementById('statPanel');
+            const total = c.u + c.y + c.k;
+            p.innerHTML = `
+                <div class="bg-indigo-50 p-3 rounded-2xl text-center border border-indigo-100">
+                    <p class="text-[7px] font-black text-indigo-400 uppercase">Umum</p>
+                    <p class="text-lg font-black text-indigo-900">${c.u}</p>
+                </div>
+                <div class="bg-purple-50 p-3 rounded-2xl text-center border border-purple-100">
+                    <p class="text-[7px] font-black text-purple-400 uppercase">Youth</p>
+                    <p class="text-lg font-black text-purple-900">${c.y}</p>
+                </div>
+                <div class="bg-amber-50 p-3 rounded-2xl text-center border border-amber-100">
+                    <p class="text-[7px] font-black text-amber-400 uppercase">Kids</p>
+                    <p class="text-lg font-black text-amber-900">${c.k}</p>
+                </div>
+                <div class="bg-slate-900 p-3 rounded-2xl text-center">
+                    <p class="text-[7px] font-black text-white/40 uppercase">Total</p>
+                    <p class="text-lg font-black text-white">${total}</p>
+                </div>
+            `;
+        }
+
+        function shareLaporanManado() {
+            const fD = document.getElementById('filterDate').value;
+            if(!fD) return alert("Pilih tanggal!");
+            const c = { ujb:0, ujt:0, upl:0, yjb:0, yjt:0, ypl:0, kjb:0, kjt:0, kpl:0 };
+            db.filter(x => x.d === fD).forEach(x => {
+                if(x.k === 'Jibar Umum') c.ujb++;
+                if(x.k === 'Jemaat Umum') c.ujt++;
+                if(x.k === 'Pelayan Umum') c.upl++;
+                if(x.k === 'Jibar Youth') c.yjb++;
+                if(x.k === 'Jemaat Youth') c.yjt++;
+                if(x.k === 'Pelayan Youth') c.ypl++;
+                if(x.k === 'Jemaat Kids') c.kjt++;
+                if(x.k === 'Pelayan Kids') c.kpl++;
+            });
+
+            const tU = c.ujb + c.ujt + c.upl;
+            const tY = c.yjb + c.yjt + c.ypl;
+            const tK = c.kjb + c.kjt + c.kpl;
+            const dStr = new Date(fD).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+
+            let m = `*Laporan Ibadah Minggu*%0A*GKA Manado*%0Apk 10.00 | 14.00%0Atgl/bln : ${dStr}%0A%0A`;
+            m += `*1. Ibadah Umum Onsite*%0A- Jumlah Jibar : ${c.ujb} org%0A- Jumlah Tamu : 0 org%0A- Jumlah PelTu : ${c.upl} org%0A- Jumlah Jemaat : ${c.ujt} org%0ATotal jumlah : ${tU} org%0A%0A`;
+            m += `*2. Ibadah Youth Teens*%0A- Jumlah Jibar : ${c.yjb} org%0A- Jumlah Jemaat : ${c.yjt} org%0A- Jumlah Peltu YT : ${c.ypl} org%0ATotal jumlah : ${tY} org%0A%0A`;
+            m += `*3. Ibadah Kids Onsite*%0A- Jumlah Jibar : 0 org%0A- Jumlah Jemaat : ${c.kjt} org%0A- Kakak Pel Anak : ${c.kpl} org%0ATotal jumlah : ${tK} org%0A%0A`;
+            m += `Total Ibadah Umum, Youth Teens, Kids : *${tU + tY + tK} jemaat*%0A%0ATuhan Yesus memberkati`;
+            window.open(`https://wa.me/?text=${m}`, '_blank');
+        }
+
+        function updateChart(c) {
+            const ctx = document.getElementById('chart').getContext('2d');
+            if(chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels:['Umum', 'Youth', 'Kids'], datasets:[{ data:[c.u, c.y, c.k], backgroundColor:['#4f46e5', '#9333ea', '#f59e0b'], borderWidth: 0 }] },
+                options: { maintainAspectRatio:false, cutout:'80%', plugins:{ legend:{ display:false } } }
+            });
+        }
+
+        function hapus(id) { if(confirm("Hapus?")) { db = db.filter(x => x.id != id); localStorage.setItem('GKA_DB_V7.1', JSON.stringify(db)); loadJemaat(); } }
+        function logout() { location.reload(); }
+    </script>
+</body>
+</html>
